@@ -1,0 +1,14 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+}
+
+pre {
+    background-color: #f4f4f4;
+    padding: 15px;
+    border-radius: 5px;
+}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Add AI - AI Integration Platform{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Add New AI</h2>
+    <form id="add-ai-form">
+        <div class="mb-3">
+            <label for="ai-name" class="form-label">AI Name</label>
+            <input type="text" class="form-control" id="ai-name" required>
+        </div>
+        <div class="mb-3">
+            <label for="ai-type" class="form-label">AI Type</label>
+            <select class="form-select" id="ai-type" required>
+                <option value="api">API</option>
+                <option value="bot">Bot</option>
+                <option value="local_ai">Local AI</option>
+                <option value="custom_ai">Custom AI</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="ai-description" class="form-label">Description</label>
+            <textarea class="form-control" id="ai-description" required></textarea>
+        </div>
+        <div id="additional-fields"></div>
+        <button type="submit" class="btn btn-primary">Add AI</button>
+    </form>
+</div>
+
+<script>
+document.getElementById('ai-type').addEventListener('change', function() {
+    const additionalFields = document.getElementById('additional-fields');
+    additionalFields.innerHTML = '';
+
+    if (this.value === 'api') {
+        additionalFields.innerHTML = `
+            <div class="mb-3">
+                <label for="api-key" class="form-label">API Key</label>
+                <input type="text" class="form-control" id="api-key" required>
+            </div>
+            <div class="mb-3">
+                <label for="api-endpoint" class="form-label">API Endpoint</label>
+                <input type="text" class="form-control" id="api-endpoint" required>
+            </div>
+        `;
+    } else if (this.value === 'bot' || this.value === 'custom_ai') {
+        additionalFields.innerHTML = `
+            <div class="mb-3">
+                <label for="ai-file" class="form-label">AI File (.py)</label>
+                <input type="file" class="form-control" id="ai-file" accept=".py" required>
+            </div>
+        `;
+    } else if (this.value === 'local_ai') {
+        additionalFields.innerHTML = `
+            <div class="mb-3">
+                <label for="ai-command" class="form-label">AI Command</label>
+                <input type="text" class="form-control" id="ai-command" required>
+            </div>
+        `;
+    }
+});
+
+document.getElementById('add-ai-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = {
+        name: document.getElementById('ai-name').value,
+        type: document.getElementById('ai-type').value,
+        description: document.getElementById('ai-description').value
+    };
+
+    if (formData.type === 'api') {
+        formData['api-key'] = document.getElementById('api-key').value;
+        formData['api-endpoint'] = document.getElementById('api-endpoint').value;
+    } else if (formData.type === 'bot' || formData.type === 'custom_ai') {
+        const fileInput = document.getElementById('ai-file');
+        if (fileInput.files.length > 0) {
+            formData['ai-file'] = fileInput.files[0].name;
+        } else {
+            alert('Please select an AI file');
+            return;
+        }
+    } else if (formData.type === 'local_ai') {
+        formData['ai-command'] = document.getElementById('ai-command').value;
+    }
+
+    fetch('/api/add_ai', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert('AI added successfully with ID: ' + data.id);
+        // Optionally, reset the form or redirect to another page
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        alert('Error: ' + (error.error || 'An unknown error occurred'));
+    });
+});
+</script>
+{% endblock %}

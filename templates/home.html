@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Home - AI Integration Platform{% endblock %}
+
+{% block content %}
+<div id="home-root"></div>
+<script type="text/babel">
+    const Home = () => {
+        const [input, setInput] = React.useState('');
+        const [inputType, setInputType] = React.useState('text');
+        const [result, setResult] = React.useState(null);
+        const [isRecording, setIsRecording] = React.useState(false);
+        const [mediaRecorder, setMediaRecorder] = React.useState(null);
+        const [audioChunks, setAudioChunks] = React.useState([]);
+
+        const handleInputChange = (e) => {
+            setInput(e.target.value);
+        };
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('/api/process_input', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ input, type: inputType }),
+                });
+                const data = await response.json();
+                setResult(data);
+                if (data.output && typeof data.output === 'string') {
+                    speakOutput(data.output);
+                }
+            } catch (error) {
+                console.error('Error processing input:', error);
+            }
+        };
+
+        const startRecording = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const recorder = new MediaRecorder(stream);
+                setMediaRecorder(recorder);
+
+                recorder.addEventListener('dataavailable', (event) => {
+                    setAudioChunks((currentChunks) => [...currentChunks, event.data]);
+                });
+
+                recorder.start();
+                setIsRecording(true);
+            } catch (error) {
+                console.error('Error starting recording:', error);
+            }
+        };
+
+        const stopRecording = () => {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                setIsRecording(false);
+
+                mediaRecorder.addEventListener('stop', async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    // Convert audio to text using a speech-to-text API
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+
+                    try {
+                        const response = await fetch('/api/speech_to_text', {
+                            method: 'POST',
+                            body: formData,
+                        });
+                        const data = await response.json();
+                        if (data.text) {
+                            setInput(data.text);
+                            setInputType('voice');
+                        }
+                    } catch (error) {
+                        console.error('Error converting speech to text:', error);
+                    }
+
+                    setAudioChunks([]);
+                });
+            }
+        };
+
+        const speakOutput = (text) => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+        };
+
+        return (
+            <div>
+                <h1 className="mb-4">AI Integration Platform</h1>
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="input" className="form-label">Enter your input:</label>
+                        <textarea
+                            className="form-control"
+                            id="input"
+                            rows="3"
+                            value={input}
+                            onChange={handleInputChange}
+                            required
+                        ></textarea>
+                    </div>
+                    <div className="mb-3">
+                        <button type="button" className="btn btn-secondary me-2" onClick={startRecording} disabled={isRecording}>
+                            {isRecording ? 'Recording...' : 'Start Voice Input'}
+                        </button>
+                        {isRecording && (
+                            <button type="button" className="btn btn-danger" onClick={stopRecording}>
+                                Stop Recording
+                            </button>
+                        )}
+                    </div>
+                    <button type="submit" className="btn btn-primary">Process Input</button>
+                </form>
+                {result && (
+                    <div className="mt-4">
+                        <h2>Result:</h2>
+                        <pre>{JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    ReactDOM.render(<Home />, document.getElementById('home-root'));
+</script>
+{% endblock %}

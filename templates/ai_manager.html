@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}AI Manager - AI Integration Platform{% endblock %}
+
+{% block content %}
+<div id="ai-manager-root"></div>
+<script type="text/babel">
+    const AIManager = () => {
+        const [ais, setAIs] = React.useState([]);
+
+        React.useEffect(() => {
+            fetchAIs();
+        }, []);
+
+        const fetchAIs = async () => {
+            try {
+                const response = await fetch('/api/get_all_ai');
+                const data = await response.json();
+                setAIs(Object.values(data));
+            } catch (error) {
+                console.error('Error fetching AIs:', error);
+            }
+        };
+
+        const handleDelete = async (aiId) => {
+            try {
+                await fetch(`/api/delete_ai/${aiId}`, { method: 'DELETE' });
+                fetchAIs();
+            } catch (error) {
+                console.error('Error deleting AI:', error);
+            }
+        };
+
+        const handleToggleConnection = async (aiId, isConnected) => {
+            try {
+                await fetch(`/api/update_ai/${aiId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ connected: !isConnected }),
+                });
+                fetchAIs();
+            } catch (error) {
+                console.error('Error updating AI connection:', error);
+            }
+        };
+
+        return (
+            <div>
+                <h1 className="mb-4">AI Manager</h1>
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ais.map((ai) => (
+                            <tr key={ai.id}>
+                                <td>{ai.name}</td>
+                                <td>{ai.type}</td>
+                                <td>{ai.description}</td>
+                                <td>
+                                    <button
+                                        className={`btn btn-sm ${ai.connected ? 'btn-success' : 'btn-secondary'} me-2`}
+                                        onClick={() => handleToggleConnection(ai.id, ai.connected)}
+                                    >
+                                        {ai.connected ? 'Disconnect' : 'Connect'}
+                                    </button>
+                                    <button
+                                        className="btn btn-sm btn-danger"
+                                        onClick={() => handleDelete(ai.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    ReactDOM.render(<AIManager />, document.getElementById('ai-manager-root'));
+</script>
+{% endblock %}
